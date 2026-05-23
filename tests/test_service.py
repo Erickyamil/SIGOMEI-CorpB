@@ -3,6 +3,9 @@
 
 import unittest
 from unittest.mock import MagicMock
+
+import bcrypt
+
 from services.service import ServiceLayer
 
 class TestServiceLayer(unittest.TestCase):
@@ -33,6 +36,59 @@ class TestServiceLayer(unittest.TestCase):
             "fecha_estimada_cierre": "2026-06-12",
             "costo_estimado": 8500.00
         }
+
+    def test_verificar_credenciales_exitoso(self):
+        password_hash_sha256 = "a" * 64
+        password_bcrypt = bcrypt.hashpw(
+            password_hash_sha256.encode("utf-8"),
+            bcrypt.gensalt(),
+        ).decode("utf-8")
+        self.mock_repo.obtener_usuario_por_correo.return_value = {
+            "id_usuario": "u-0002-super",
+            "correo": "super@sigomei.mx",
+            "password_hash": password_bcrypt,
+            "rol": "Supervisor",
+            "activo": 1,
+        }
+
+        respuesta = self.service.verificar_credenciales(
+            "super@sigomei.mx",
+            password_hash_sha256,
+        )
+
+        self.assertEqual(respuesta["status"], "OK")
+        self.assertEqual(respuesta["data"]["id_usuario"], "u-0002-super")
+        self.assertEqual(respuesta["data"]["rol"], "Supervisor")
+
+    def test_verificar_credenciales_invalidas(self):
+        password_bcrypt = bcrypt.hashpw(
+            ("a" * 64).encode("utf-8"),
+            bcrypt.gensalt(),
+        ).decode("utf-8")
+        self.mock_repo.obtener_usuario_por_correo.return_value = {
+            "id_usuario": "u-0002-super",
+            "correo": "super@sigomei.mx",
+            "password_hash": password_bcrypt,
+            "rol": "Supervisor",
+            "activo": 1,
+        }
+
+        respuesta = self.service.verificar_credenciales(
+            "super@sigomei.mx",
+            "b" * 64,
+        )
+
+        self.assertEqual(respuesta["status"], "ERR_AUTH")
+
+    def test_verificar_credenciales_usuario_no_existe(self):
+        self.mock_repo.obtener_usuario_por_correo.return_value = {}
+
+        respuesta = self.service.verificar_credenciales(
+            "nadie@sigomei.mx",
+            "a" * 64,
+        )
+
+        self.assertEqual(respuesta["status"], "ERR_AUTH")
 
     # ──────────────────────────────────────────────────────────────────────────
     # PRUEBAS: DOMINIO ÓRDENES DE MANTENIMIENTO (ODM)

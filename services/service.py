@@ -1,6 +1,9 @@
 # services/service.py
 # Capa de Servicio Completa — Coordina la persistencia con las Reglas de Negocio (RN)
 
+import bcrypt
+import secrets
+
 from services.validators import (
     validar_tecnico_activo,
     validar_especialidad,
@@ -18,6 +21,36 @@ class ServiceLayer:
         Inyectamos la capa de persistencia (Repositorio)
         """
         self.repo = repository
+
+    def verificar_credenciales(self, correo: str, password_hash_recibido: str) -> dict:
+        if not isinstance(correo, str) or not isinstance(password_hash_recibido, str):
+            return {"status": "ERR_AUTH", "message": "Credenciales invalidas.", "data": None}
+
+        usuario = self.repo.obtener_usuario_por_correo(correo)
+        if not usuario:
+            return {"status": "ERR_AUTH", "message": "Credenciales invalidas.", "data": None}
+
+        password_bcrypt_db = usuario.get("password_hash", "")
+        try:
+            credenciales_validas = bcrypt.checkpw(
+                password_hash_recibido.encode("utf-8"),
+                password_bcrypt_db.encode("utf-8"),
+            )
+        except ValueError:
+            return {"status": "ERR_AUTH", "message": "Credenciales invalidas.", "data": None}
+
+        if not credenciales_validas:
+            return {"status": "ERR_AUTH", "message": "Credenciales invalidas.", "data": None}
+
+        return {
+            "status": "OK",
+            "message": "Inicio de sesion exitoso.",
+            "data": {
+                "id_usuario": usuario["id_usuario"],
+                "rol": usuario["rol"],
+                "token": secrets.token_hex(32),
+            },
+        }
 
     # ──────────────────────────────────────────────────────────────────────────
     # DOMINIO: ORDEN DE MANTENIMIENTO (ODM)
