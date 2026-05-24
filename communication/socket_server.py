@@ -1,6 +1,7 @@
 import json
 import socket
 import threading
+import traceback
 from datetime import date, datetime
 from decimal import Decimal
 
@@ -19,11 +20,16 @@ class SIGOMEISocketServer:
             server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
             server.bind((self.host, self.port))
             server.listen()
+            server.settimeout(1.0)
             print(f"[*] SIGOMEI socket server escuchando en {self.host}:{self.port}")
             print("[*] Envia JSON por linea. Accion 'ping' para probar conectividad.")
+            print("[*] Pulsa Ctrl+C para detener.")
 
             while not self._shutdown.is_set():
-                client, address = server.accept()
+                try:
+                    client, address = server.accept()
+                except socket.timeout:
+                    continue
                 thread = threading.Thread(
                     target=self._handle_client,
                     args=(client, address),
@@ -58,6 +64,8 @@ class SIGOMEISocketServer:
         except KeyError as exc:
             return {"status": "ERR_BAD_REQUEST", "message": f"Campo requerido faltante: {exc}", "data": None}
         except Exception as exc:
+            print(f"[!] ERROR INTERNO: {type(exc).__name__}: {exc}", flush=True)
+            traceback.print_exc()
             return {"status": "ERR_INTERNAL", "message": str(exc), "data": None}
 
     def _dispatch(self, request: dict) -> dict:

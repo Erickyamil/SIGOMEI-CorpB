@@ -31,6 +31,14 @@ El backend ha superado con éxito la fase ROJO del ciclo TDD. El motor de reglas
 
 Ejecuta el siguiente comando para instalar el runner de pruebas y la extensión de análisis de cobertura:
 
-```bash
-pip install --upgrade pip
-pip install pytest pytest-cov mysql-connector-python
+```powershell
+python -m venv .venv # Create environment
+
+.\.venv\Scripts\activate # Activate environment
+
+pip install pytest pytest-cov mysql-connector-python bcrypt
+
+$env:SIGOMEI_DB_PASSWORD = 'root_password' # Powershell
+
+python main_server.py # Executing
+```
